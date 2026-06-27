@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PickPort App – クリック可能プロトタイプ</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --orange:#E8650A; --orange-light:#F5841F; --orange-bg:#FFF4EC;
+    --dark:#1C1C1E; --gray:#6B6B6B; --gray-light:#F5F5F7; --white:#FFF;
+    --radius:16px; --shadow:0 4px 24px rgba(0,0,0,.10);
+  }
+  body{
+    font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;
+    background:linear-gradient(160deg,#FFF7F0 0%,#FFE8D0 100%);
+    color:var(--dark); line-height:1.6; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:32px 16px 48px;
+  }
+
+  /* ── INTRO BAR ── */
+  .intro{ text-align:center; margin-bottom:24px; max-width:520px; }
+  .intro .logo{ display:inline-flex; align-items:center; gap:8px;
+    font-size:24px; font-weight:800; color:var(--orange); }
+  .intro .logo .mark{ width:34px;height:34px;background:var(--orange);
+    border-radius:9px;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:18px; }
+  .intro p{ font-size:14px; color:var(--gray); margin-top:8px; }
+  .intro .role-switch{ display:inline-flex; gap:6px; margin-top:16px;
+    background:#fff; padding:5px; border-radius:100px; box-shadow:var(--shadow); }
+  .intro .role-switch button{
+    border:none; background:transparent; cursor:pointer;
+    font-size:13px; font-weight:600; color:var(--gray);
+    padding:7px 16px; border-radius:100px; transition:all .2s;
+  }
+  .intro .role-switch button.active{ background:var(--orange); color:#fff; }
+
+  /* ── PHONE ── */
+  .phone{
+    width:390px; max-width:100%; height:780px;
+    background:var(--dark); border-radius:46px; padding:14px;
+    box-shadow:0 30px 80px rgba(0,0,0,.30); position:relative;
+  }
+  .notch{ position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:140px; height:26px; background:var(--dark); border-radius:0 0 18px 18px; z-index:30; }
+  .screen{
+    background:#fff; border-radius:34px; height:100%; width:100%;
+    overflow:hidden; position:relative; display:flex; flex-direction:column;
+  }
+
+  /* status bar */
+  .statusbar{ display:flex; justify-content:space-between; align-items:center;
+    padding:14px 24px 6px; font-size:13px; font-weight:600; flex-shrink:0; }
+  .statusbar .dots{ letter-spacing:2px; }
+
+  /* app header */
+  .appbar{ padding:6px 20px 16px; flex-shrink:0; display:flex;
+    align-items:center; justify-content:space-between; gap:10px; }
+  .appbar h2{ font-size:22px; font-weight:900; }
+  .appbar .sub{ font-size:13px; color:var(--gray); }
+  .appbar .back{ background:var(--gray-light); border:none; cursor:pointer;
+    width:38px;height:38px;border-radius:50%;font-size:18px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center; }
+  .appbar .avatar{ width:42px;height:42px;border-radius:50%;
+    background:linear-gradient(135deg,var(--orange),var(--orange-light));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-weight:800;font-size:16px;flex-shrink:0; }
+
+  /* scroll body */
+  .body{ flex:1; overflow-y:auto; padding:4px 20px 20px; }
+  .body::-webkit-scrollbar{ width:0; }
+
+  /* views */
+  .view{ display:none; animation:fade .25s ease; }
+  .view.active{ display:block; }
+  @keyframes fade{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
+
+  .section-h{ font-size:13px; font-weight:800; color:var(--gray);
+    margin:18px 0 10px; text-transform:uppercase; letter-spacing:.04em; }
+  .section-h:first-child{ margin-top:6px; }
+
+  /* cards */
+  .card{ background:#fff; border:1px solid rgba(0,0,0,.07); border-radius:var(--radius);
+    padding:14px; margin-bottom:12px; box-shadow:0 2px 10px rgba(0,0,0,.04);
+    cursor:pointer; transition:transform .12s, box-shadow .12s; }
+  .card:active{ transform:scale(.98); }
+  .card.flat{ cursor:default; }
+  .ship-row{ display:flex; align-items:center; gap:12px; }
+  .ship-icon{ width:46px;height:46px;border-radius:13px;flex-shrink:0;
+    background:var(--orange-bg);display:flex;align-items:center;justify-content:center;font-size:22px; }
+  .ship-info{ flex:1; min-width:0; }
+  .ship-info strong{ font-size:15px; font-weight:800; display:block; }
+  .ship-info span{ font-size:12px; color:var(--gray); }
+  .chev{ color:#ccc; font-size:20px; }
+  .status{ display:inline-block; font-size:11px; padding:3px 10px;
+    border-radius:100px; font-weight:700; margin-top:5px; }
+  .s-wait{ background:#FFF3CD; color:#856404; }
+  .s-go{ background:#D1FAE5; color:#065F46; }
+  .s-done{ background:#E0E7FF; color:#3730A3; }
+  .s-new{ background:var(--orange-bg); color:var(--orange); }
+
+  /* hero reward */
+  .reward{ background:linear-gradient(135deg,var(--orange),var(--orange-light));
+    color:#fff; border-radius:var(--radius); padding:18px; margin-bottom:6px;
+    box-shadow:0 8px 24px rgba(232,101,10,.35); }
+  .reward .label{ font-size:12px; opacity:.9; font-weight:600; }
+  .reward .amount{ font-size:32px; font-weight:900; margin-top:2px; }
+  .reward .meta{ font-size:12px; opacity:.85; }
+
+  /* timeline (detail) */
+  .timeline{ margin:8px 0 4px; }
+  .tl-item{ display:flex; gap:14px; }
+  .tl-marker{ display:flex; flex-direction:column; align-items:center; }
+  .tl-dot{ width:26px;height:26px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:13px;
+    background:var(--gray-light); color:var(--gray); }
+  .tl-dot.done{ background:var(--orange); color:#fff; }
+  .tl-dot.now{ background:#fff; border:2px solid var(--orange); color:var(--orange); }
+  .tl-line{ width:2px; flex:1; background:#eee; margin:2px 0; }
+  .tl-line.done{ background:var(--orange); }
+  .tl-body{ padding-bottom:18px; }
+  .tl-body strong{ font-size:14px; font-weight:800; display:block; }
+  .tl-body span{ font-size:12px; color:var(--gray); }
+
+  /* form */
+  .field{ margin-bottom:14px; }
+  .field label{ font-size:13px; font-weight:700; display:block; margin-bottom:6px; }
+  .field input, .field select, .field textarea{
+    width:100%; border:1.5px solid #e3e3e6; border-radius:12px;
+    padding:12px 14px; font-size:15px; font-family:inherit;
+    background:var(--gray-light); transition:border-color .2s; }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none; border-color:var(--orange); background:#fff; }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ border:1.5px solid #e3e3e6; background:var(--gray-light);
+    border-radius:100px; padding:8px 16px; font-size:13px; font-weight:600;
+    cursor:pointer; transition:all .15s; }
+  .chip.active{ background:var(--orange); color:#fff; border-color:var(--orange); }
+
+  /* progress dots for wizard */
+  .wizard-dots{ display:flex; gap:6px; justify-content:center; margin-bottom:16px; }
+  .wd{ width:8px;height:8px;border-radius:50%;background:#e0e0e0; transition:all .3s; }
+  .wd.active{ background:var(--orange); width:22px; border-radius:100px; }
+
+  /* buttons */
+  .btn{ width:100%; border:none; cursor:pointer; border-radius:14px;
+    padding:15px; font-size:16px; font-weight:800; font-family:inherit;
+    background:var(--orange); color:#fff; transition:transform .12s, opacity .2s;
+    box-shadow:0 6px 18px rgba(232,101,10,.3); }
+  .btn:active{ transform:scale(.98); }
+  .btn.ghost{ background:var(--gray-light); color:var(--dark); box-shadow:none; }
+  .btn.sm{ padding:11px; font-size:14px; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ flex:1; }
+
+  /* summary list */
+  .sumrow{ display:flex; justify-content:space-between; padding:11px 0;
+    border-bottom:1px solid #f0f0f0; font-size:14px; }
+  .sumrow:last-child{ border-bottom:none; }
+  .sumrow .k{ color:var(--gray); }
+  .sumrow .v{ font-weight:700; text-align:right; }
+
+  /* success */
+  .success{ text-align:center; padding:40px 10px; }
+  .success .check{ width:88px;height:88px;border-radius:50%;
+    background:var(--orange-bg); color:var(--orange); font-size:44px;
+    display:flex;align-items:center;justify-content:center; margin:0 auto 20px;
+    animation:pop .4s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop{ from{transform:scale(0);} to{transform:scale(1);} }
+  .success h3{ font-size:22px; font-weight:900; margin-bottom:8px; }
+  .success p{ font-size:14px; color:var(--gray); margin-bottom:24px; }
+
+  /* traveler match card */
+  .match-card{ border:1px solid rgba(0,0,0,.07); border-radius:var(--radius);
+    padding:16px; margin-bottom:12px; box-shadow:0 2px 10px rgba(0,0,0,.04); background:#fff; }
+  .match-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .route{ font-size:16px; font-weight:800; }
+  .route .arrow{ color:var(--orange); margin:0 4px; }
+  .pay{ text-align:right; }
+  .pay .amt{ font-size:18px; font-weight:900; color:var(--orange); }
+  .pay .lbl{ font-size:10px; color:var(--gray); }
+  .match-meta{ display:flex; gap:14px; font-size:12px; color:var(--gray); margin-bottom:12px; flex-wrap:wrap; }
+
+  /* profile */
+  .profile-head{ text-align:center; padding:10px 0 20px; }
+  .profile-head .big-avatar{ width:84px;height:84px;border-radius:50%;
+    background:linear-gradient(135deg,var(--orange),var(--orange-light));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-size:32px;font-weight:800; margin:0 auto 12px; }
+  .profile-head h3{ font-size:20px; font-weight:900; }
+  .profile-head .stars{ color:var(--orange); font-size:14px; margin-top:4px; }
+  .stat-row{ display:flex; gap:10px; margin-bottom:18px; }
+  .stat-box{ flex:1; background:var(--gray-light); border-radius:14px; padding:14px 8px; text-align:center; }
+  .stat-box .n{ font-size:20px; font-weight:900; color:var(--orange); }
+  .stat-box .l{ font-size:11px; color:var(--gray); }
+  .menu-item{ display:flex; align-items:center; gap:14px; padding:15px 4px;
+    border-bottom:1px solid #f2f2f2; font-size:15px; font-weight:600; cursor:pointer; }
+  .menu-item .mi-ico{ font-size:20px; width:26px; text-align:center; }
+  .menu-item .chev{ margin-left:auto; }
+
+  /* bottom nav */
+  .tabbar{ display:flex; border-top:1px solid #eee; background:#fff;
+    flex-shrink:0; padding:8px 0 10px; }
+  .tabbar button{ flex:1; border:none; background:none; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-size:10px; color:var(--gray); font-weight:600; }
+  .tabbar button .ic{ font-size:21px; }
+  .tabbar button.active{ color:var(--orange); }
+
+  /* fab */
+  .fab{ position:absolute; right:18px; bottom:84px; z-index:20;
+    width:58px;height:58px;border-radius:50%; border:none; cursor:pointer;
+    background:var(--orange); color:#fff; font-size:28px; font-weight:300;
+    box-shadow:0 8px 24px rgba(232,101,10,.45); display:flex;
+    align-items:center; justify-content:center; transition:transform .15s; }
+  .fab:active{ transform:scale(.9); }
+
+  /* toast */
+  .toast{ position:absolute; bottom:96px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--dark); color:#fff; padding:11px 20px; border-radius:100px;
+    font-size:13px; font-weight:600; opacity:0; pointer-events:none;
+    transition:all .3s; z-index:40; white-space:nowrap; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .hint{ text-align:center; font-size:12px; color:var(--gray); margin-top:20px; max-width:390px; }
+  .hint kbd{ background:#fff; border:1px solid #ddd; border-radius:6px; padding:1px 7px; font-size:11px; }
+
+  @media (max-width:430px){
+    body{ padding:12px 0 24px; }
+    .phone{ height:88vh; border-radius:0; padding:0; box-shadow:none; }
+    .notch{ display:none; }
+    .screen{ border-radius:0; }
+    .intro{ padding:0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="logo"><span class="mark">📦</span>PickPort</div>
+  <p>クリック可能なアプリ・プロトタイプ。役割を切り替えて操作できます。</p>
+  <div class="role-switch">
+    <button id="role-shipper" class="active" onclick="setRole('shipper')">📦 荷主モード</button>
+    <button id="role-traveler" onclick="setRole('traveler')">✈️ 旅行者モード</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="statusbar">
+      <span>9:41</span>
+      <span class="dots">●●● 📶 🔋</span>
+    </div>
+
+    <!-- HEADER (dynamic) -->
+    <div class="appbar" id="appbar"></div>
+
+    <!-- BODY -->
+    <div class="body" id="appBody"></div>
+
+    <!-- FAB -->
+    <button class="fab" id="fab" onclick="openNewShipment()">＋</button>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <!-- TABBAR -->
+    <div class="tabbar" id="tabbar"></div>
+  </div>
+</div>
+
+<p class="hint">💡 役割を切り替えると荷主／旅行者でアプリの中身が変わります。カードや<kbd>＋</kbd>ボタンをタップして遷移を試してください。</p>
+
+<script>
+/* ============ STATE ============ */
+let role = 'shipper';        // 'shipper' | 'traveler'
+let currentTab = 'home';     // home | ship | trip | mypage
+let viewStack = [];          // for back navigation within a tab
+
+/* demo data */
+const shipments = [
+  { id:'PP-1042', icon:'📦', route:'東京 → ニューヨーク', item:'スニーカー × 2足', status:'go', statusLabel:'✈️ 輸送中', step:2, weight:'1.8kg', fee:'¥3,200', recipient:'J. Carter' },
+  { id:'PP-1039', icon:'🛃', route:'大阪 → ソウル', item:'化粧品セット', status:'wait', statusLabel:'⏳ 通関待ち', step:1, weight:'0.9kg', fee:'¥1,800', recipient:'Kim M.' },
+  { id:'PP-1031', icon:'✅', route:'東京 → パリ', item:'アパレル × 5点', status:'done', statusLabel:'✅ 配送完了', step:5, weight:'2.4kg', fee:'¥3,400', recipient:'L. Dubois' },
+];
+const trips = [
+  { route:'成田 → ホノルル', date:'7/12 (土)', cap:'7kg 空きあり', pay:'¥4,500', item:'カメラ機材', weight:'2.1kg', from:'カメラ専門店', deadline:'7/10締切' },
+  { route:'羽田 → 台北', date:'7/18 (金)', cap:'5kg 空きあり', pay:'¥2,800', item:'健康食品 × 3', weight:'1.5kg', from:'A. Tanaka', deadline:'7/15締切' },
+  { route:'関西 → バンコク', date:'7/25 (金)', cap:'10kg 空きあり', pay:'¥3,600', item:'アパレル小物', weight:'2.8kg', from:'EC事業者', deadline:'7/22締切' },
+];
+const myTrips = [
+  { route:'成田 → ホノルル', date:'7/12 (土)', status:'受託1件', accepted:true },
+];
+
+/* new shipment wizard form */
+let form = { dest:'', city:'', item:'', category:'アパレル', weight:'', note:'' };
+let wizardStep = 0;
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function go(view){ viewStack.push(view); render(); }
+function back(){ viewStack.pop(); render(); }
+function setTab(tab){ currentTab = tab; viewStack = [tab]; render(); }
+
+/* ============ ROLE ============ */
+function setRole(r){
+  role = r;
+  $('role-shipper').classList.toggle('active', r==='shipper');
+  $('role-traveler').classList.toggle('active', r==='traveler');
+  currentTab = 'home'; viewStack = ['home']; render();
+}
+
+/* ============ RENDER ============ */
+function render(){
+  const view = viewStack[viewStack.length-1] || 'home';
+  renderHeader(view);
+  renderBody(view);
+  renderTabbar();
+  // FAB only on shipper ship-list / home
+  $('fab').style.display = (role==='shipper' && (view==='home'||view==='ship')) ? 'flex' : 'none';
+}
+
+function renderHeader(view){
+  const bar = $('appbar');
+  const titles = {
+    home: role==='shipper' ? ['ホーム','こんにちは、へびさん 👋'] : ['ホーム','今日も良い旅を、へびさん ✈️'],
+    ship: ['配送一覧','進行中・完了の荷物'],
+    trip: role==='shipper' ? ['旅行','—'] : ['配送をさがす','あなたのルートで運べる荷物'],
+    mypage: ['マイページ','—'],
+    detail: ['配送状況', ''],
+    newship: ['新規配送依頼',''],
+    success: ['',''],
+    matchDetail: ['配送の詳細',''],
+    matchSuccess: ['',''],
+    addtrip: ['旅行予定を登録',''],
+  };
+  const [t,s] = titles[view] || ['PickPort',''];
+  const showBack = viewStack.length>1;
+  bar.innerHTML = `
+    ${showBack ? `<button class="back" onclick="back()">‹</button>` : ''}
+    <div style="flex:1">
+      <h2>${t}</h2>
+      ${s && s!=='—' ? `<div class="sub">${s}</div>` : ''}
+    </div>
+    ${!showBack && view!=='success' && view!=='matchSuccess'
+      ? `<div class="avatar">へ</div>` : ''}
+  `;
+}
+
+function renderTabbar(){
+  const tabs = role==='shipper'
+    ? [['home','🏠','ホーム'],['ship','📦','配送'],['trip','✈️','旅行'],['mypage','👤','マイページ']]
+    : [['home','🏠','ホーム'],['trip','🔍','さがす'],['ship','🧳','受託中'],['mypage','👤','マイページ']];
+  $('tabbar').innerHTML = tabs.map(([k,ic,lbl])=>`
+    <button class="${currentTab===k?'active':''}" onclick="setTab('${k}')">
+      <span class="ic">${ic}</span>${lbl}
+    </button>`).join('');
+}
+
+/* ============ BODY VIEWS ============ */
+function renderBody(view){
+  const b = $('appBody');
+  if(view==='home')        b.innerHTML = role==='shipper' ? homeShipper() : homeTraveler();
+  else if(view==='ship')   b.innerHTML = role==='shipper' ? shipList() : travelerAccepted();
+  else if(view==='trip')   b.innerHTML = role==='shipper' ? shipperTripEmpty() : travelerSearch();
+  else if(view==='mypage') b.innerHTML = myPage();
+  else if(view==='detail') b.innerHTML = shipmentDetail(selected);
+  else if(view==='newship')b.innerHTML = newShipWizard();
+  else if(view==='success')b.innerHTML = successView();
+  else if(view==='matchDetail') b.innerHTML = matchDetailView(selectedTrip);
+  else if(view==='matchSuccess') b.innerHTML = matchSuccessView();
+  else if(view==='addtrip') b.innerHTML = addTripView();
+  // wire wizard inputs after injection
+  if(view==='newship') hydrateWizard();
+}
+
+/* ---- SHIPPER: Home ---- */
+function homeShipper(){
+  return `
+    <div class="reward">
+      <div class="label">💰 今月の配送実績</div>
+      <div class="amount">3 件</div>
+      <div class="meta">支払額 ¥8,400 ・ 平均配送 4.2日</div>
+    </div>
+    <div class="section-h">進行中の配送</div>
+    ${shipments.filter(s=>s.status!=='done').map(card).join('')}
+    <div class="section-h">最近完了</div>
+    ${shipments.filter(s=>s.status==='done').map(card).join('')}
+    <button class="btn" style="margin-top:6px" onclick="openNewShipment()">＋ 新しい配送を依頼</button>
+  `;
+}
+/* ---- SHIPPER: Ship list ---- */
+function shipList(){
+  return `
+    <div class="section-h">すべての配送</div>
+    ${shipments.map(card).join('')}
+  `;
+}
+function card(s){
+  const cls = {go:'s-go',wait:'s-wait',done:'s-done'}[s.status];
+  return `
+    <div class="card" onclick="openDetail('${s.id}')">
+      <div class="ship-row">
+        <div class="ship-icon">${s.icon}</div>
+        <div class="ship-info">
+          <strong>${s.route}</strong>
+          <span>${s.item} ・ ${s.id}</span><br>
+          <span class="status ${cls}">${s.statusLabel}</span>
+        </div>
+        <span class="chev">›</span>
+      </div>
+    </div>`;
+}
+function shipperTripEmpty(){
+  return `
+    <div style="text-align:center;padding:48px 10px;">
+      <div style="font-size:54px;margin-bottom:12px;">✈️</div>
+      <h3 style="font-size:18px;font-weight:900;margin-bottom:8px;">旅行者として運びませんか？</h3>
+      <p style="font-size:14px;color:var(--gray);margin-bottom:24px;">
+        上の「旅行者モード」に切り替えると、あなたの旅行ルートで荷物を運んで報酬を受け取れます。</p>
+      <button class="btn" onclick="setRole('traveler')">✈️ 旅行者モードに切替</button>
+    </div>`;
+}
+
+/* ---- SHIPPER: Detail with timeline ---- */
+function shipmentDetail(s){
+  const steps = [
+    ['集荷完了','荷物をお預かりしました'],
+    ['輸出通関','通関士が手続き中'],
+    ['ロッカー搬入 / 旅行者ピックアップ','空港ロッカーへ'],
+    ['輸送中','旅行者が手荷物として輸送'],
+    ['輸入通関 → 配送完了','現地で荷受人へ'],
+  ];
+  return `
+    <div class="card flat" style="cursor:default">
+      <div class="ship-row">
+        <div class="ship-icon">${s.icon}</div>
+        <div class="ship-info">
+          <strong>${s.route}</strong>
+          <span>${s.item}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card flat" style="cursor:default">
+      <div class="sumrow"><span class="k">追跡番号</span><span class="v">${s.id}</span></div>
+      <div class="sumrow"><span class="k">重量</span><span class="v">${s.weight}</span></div>
+      <div class="sumrow"><span class="k">配送料</span><span class="v">${s.fee}</span></div>
+      <div class="sumrow"><span class="k">荷受人</span><span class="v">${s.recipient}</span></div>
+    </div>
+    <div class="section-h">配送ステータス</div>
+    <div class="timeline">
+      ${steps.map((st,i)=>{
+        const done = i < s.step, now = i === s.step;
+        const dotCls = done?'done':(now?'now':'');
+        const lineCls = i < s.step ? 'done':'';
+        const icon = done?'✓':(now?'●':(i+1));
+        return `
+        <div class="tl-item">
+          <div class="tl-marker">
+            <div class="tl-dot ${dotCls}">${icon}</div>
+            ${i<steps.length-1?`<div class="tl-line ${lineCls}"></div>`:''}
+          </div>
+          <div class="tl-body">
+            <strong>${st[0]}</strong>
+            <span>${done?'完了':(now?'進行中…':st[1])}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn ghost" onclick="toast('サポートに接続します（デモ）')">サポートに問い合わせ</button>
+  `;
+}
+
+/* ---- SHIPPER: New shipment wizard ---- */
+function openNewShipment(){ wizardStep=0; form={dest:'',city:'',item:'',category:'アパレル',weight:'',note:''}; viewStack.push('newship'); render(); }
+function newShipWizard(){
+  const dots = [0,1,2].map(i=>`<div class="wd ${i===wizardStep?'active':''}"></div>`).join('');
+  let inner='';
+  if(wizardStep===0){
+    inner = `
+      <div class="section-h">どこへ送りますか？</div>
+      <div class="field">
+        <label>配送先の国</label>
+        <select id="f-dest">
+          <option value="">選択してください</option>
+          <option>アメリカ 🇺🇸</option><option>韓国 🇰🇷</option>
+          <option>フランス 🇫🇷</option><option>台湾 🇹🇼</option><option>タイ 🇹🇭</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>都市</label>
+        <input id="f-city" placeholder="例：ニューヨーク">
+      </div>`;
+  } else if(wizardStep===1){
+    inner = `
+      <div class="section-h">何を送りますか？</div>
+      <div class="field">
+        <label>品名</label>
+        <input id="f-item" placeholder="例：スニーカー × 2足">
+      </div>
+      <div class="field">
+        <label>カテゴリ</label>
+        <div class="chips" id="f-cat">
+          ${['アパレル','化粧品','食品','電子機器','その他'].map(c=>
+            `<div class="chip ${form.category===c?'active':''}" onclick="pickCat('${c}')">${c}</div>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>重量（kg）</label>
+        <input id="f-weight" type="number" inputmode="decimal" placeholder="例：1.8">
+      </div>`;
+  } else {
+    const fee = estimateFee();
+    inner = `
+      <div class="section-h">内容の確認</div>
+      <div class="card flat" style="cursor:default">
+        <div class="sumrow"><span class="k">配送先</span><span class="v">${form.dest||'—'} ${form.city||''}</span></div>
+        <div class="sumrow"><span class="k">品名</span><span class="v">${form.item||'—'}</span></div>
+        <div class="sumrow"><span class="k">カテゴリ</span><span class="v">${form.category}</span></div>
+        <div class="sumrow"><span class="k">重量</span><span class="v">${form.weight?form.weight+'kg':'—'}</span></div>
+      </div>
+      <div class="reward" style="margin-top:8px">
+        <div class="label">概算配送料（旅行者報酬込み）</div>
+        <div class="amount">${fee}</div>
+        <div class="meta">通関手続き・ロッカー利用料を含む</div>
+      </div>`;
+  }
+  const nextLabel = wizardStep<2 ? '次へ' : 'この内容で依頼する';
+  return `
+    <div class="wizard-dots">${dots}</div>
+    ${inner}
+    <div style="height:8px"></div>
+    <div class="btn-row">
+      ${wizardStep>0?`<button class="btn ghost" onclick="wizPrev()">戻る</button>`:''}
+      <button class="btn" onclick="wizNext()">${nextLabel}</button>
+    </div>
+  `;
+}
+function hydrateWizard(){
+  if($('f-dest')) $('f-dest').value = form.dest;
+  if($('f-city')) $('f-city').value = form.city;
+  if($('f-item')) $('f-item').value = form.item;
+  if($('f-weight')) $('f-weight').value = form.weight;
+}
+function pickCat(c){ form.category=c; render(); }
+function saveWizardInputs(){
+  if($('f-dest')) form.dest=$('f-dest').value;
+  if($('f-city')) form.city=$('f-city').value;
+  if($('f-item')) form.item=$('f-item').value;
+  if($('f-weight')) form.weight=$('f-weight').value;
+}
+function estimateFee(){
+  const w = parseFloat(form.weight)||1;
+  const base = 1500, perKg = 1100;
+  return '¥'+Math.round(base + w*perKg).toLocaleString();
+}
+function wizNext(){
+  saveWizardInputs();
+  if(wizardStep===0 && !form.dest){ toast('配送先の国を選んでください'); return; }
+  if(wizardStep===1 && (!form.item || !form.weight)){ toast('品名と重量を入力してください'); return; }
+  if(wizardStep<2){ wizardStep++; render(); }
+  else {
+    // create shipment
+    shipments.unshift({
+      id:'PP-'+Math.floor(1000+Math.random()*9000), icon:'📦',
+      route:'東京 → '+(form.city||form.dest), item:form.item, status:'wait',
+      statusLabel:'⏳ 通関待ち', step:0, weight:form.weight+'kg',
+      fee:estimateFee(), recipient:'未設定',
+    });
+    viewStack[viewStack.length-1]='success'; render();
+  }
+}
+function wizPrev(){ saveWizardInputs(); wizardStep--; render(); }
+function successView(){
+  return `
+    <div class="success">
+      <div class="check">✓</div>
+      <h3>配送依頼を受け付けました</h3>
+      <p>PickPortが集荷・通関手続きを開始します。<br>進捗はアプリで随時お知らせします。</p>
+      <button class="btn" onclick="setTab('home')">ホームに戻る</button>
+    </div>`;
+}
+
+/* ---- TRAVELER: Home ---- */
+function homeTraveler(){
+  return `
+    <div class="reward">
+      <div class="label">💰 今月の報酬</div>
+      <div class="amount">¥7,300</div>
+      <div class="meta">受託2件 ・ 評価 ★4.9</div>
+    </div>
+    <div class="section-h">登録中の旅行</div>
+    ${myTrips.map(t=>`
+      <div class="card flat" style="cursor:default">
+        <div class="ship-row">
+          <div class="ship-icon">✈️</div>
+          <div class="ship-info">
+            <strong>${t.route}</strong>
+            <span>${t.date}</span><br>
+            <span class="status s-go">${t.status}</span>
+          </div>
+        </div>
+      </div>`).join('')}
+    <button class="btn ghost" onclick="go('addtrip')" style="margin-bottom:14px">＋ 旅行予定を追加</button>
+    <div class="section-h">おすすめの配送</div>
+    ${trips.slice(0,2).map(matchCard).join('')}
+    <button class="btn" onclick="setTab('trip')">もっとさがす</button>
+  `;
+}
+/* ---- TRAVELER: Search ---- */
+function travelerSearch(){
+  return `
+    <div class="field" style="margin-top:6px">
+      <input placeholder="🔍 ルートや都市で検索（例：ホノルル）" oninput="toast('検索デモ：全件表示中')">
+    </div>
+    <div class="section-h">あなたのルートで運べる荷物</div>
+    ${trips.map(matchCard).join('')}
+  `;
+}
+function matchCard(t){
+  const i = trips.indexOf(t);
+  return `
+    <div class="match-card">
+      <div class="match-top">
+        <div>
+          <div class="route">${t.route.split(' → ')[0]}<span class="arrow">→</span>${t.route.split(' → ')[1]}</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:2px;">${t.date} ・ ${t.deadline}</div>
+        </div>
+        <div class="pay"><div class="amt">${t.pay}</div><div class="lbl">報酬</div></div>
+      </div>
+      <div class="match-meta">
+        <span>📦 ${t.item}</span><span>⚖️ ${t.weight}</span><span>🙋 ${t.from}</span>
+      </div>
+      <button class="btn sm" onclick="openMatch(${i})">詳細を見る</button>
+    </div>`;
+}
+function openMatch(i){ selectedTrip = trips[i]; go('matchDetail'); }
+function matchDetailView(t){
+  return `
+    <div class="match-card" style="margin-top:6px">
+      <div class="route" style="font-size:20px">${t.route}</div>
+      <div style="font-size:13px;color:var(--gray);margin-top:4px">${t.date} 出発 ・ ${t.deadline}</div>
+    </div>
+    <div class="card flat" style="cursor:default">
+      <div class="sumrow"><span class="k">品名</span><span class="v">${t.item}</span></div>
+      <div class="sumrow"><span class="k">重量</span><span class="v">${t.weight}</span></div>
+      <div class="sumrow"><span class="k">依頼者</span><span class="v">${t.from}</span></div>
+      <div class="sumrow"><span class="k">空き容量</span><span class="v">${t.cap}</span></div>
+    </div>
+    <div class="reward" style="margin-top:4px">
+      <div class="label">あなたが受け取る報酬</div>
+      <div class="amount">${t.pay}</div>
+      <div class="meta">ドロップオフ完了後に即時支払い</div>
+    </div>
+    <div class="card flat" style="cursor:default;background:var(--orange-bg);border-color:rgba(232,101,10,.2)">
+      <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:6px">🛃 通関はPickPortが代行</div>
+      <div style="font-size:13px;color:var(--gray)">あなたは空港ロッカーで荷物を受け取り、手荷物として運ぶだけ。輸出入の通関手続きは通関士が行います。</div>
+    </div>
+    <button class="btn" onclick="acceptMatch()">この配送を受託する</button>
+  `;
+}
+function acceptMatch(){ viewStack[viewStack.length-1]='matchSuccess'; render(); }
+function matchSuccessView(){
+  return `
+    <div class="success">
+      <div class="check">✈️</div>
+      <h3>配送を受託しました！</h3>
+      <p>出発前に空港ロッカーで荷物を<br>ピックアップしてください。詳細はアプリに届きます。</p>
+      <button class="btn" onclick="setTab('home')">ホームに戻る</button>
+    </div>`;
+}
+function travelerAccepted(){
+  return `
+    <div class="section-h">受託中の配送</div>
+    <div class="match-card">
+      <div class="match-top">
+        <div><div class="route">成田<span class="arrow">→</span>ホノルル</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:2px;">7/12 出発</div></div>
+        <div class="pay"><div class="amt">¥4,500</div><div class="lbl">報酬</div></div>
+      </div>
+      <div class="match-meta"><span>📦 カメラ機材</span><span>⚖️ 2.1kg</span></div>
+      <span class="status s-wait">🔐 ロッカー受取待ち</span>
+    </div>
+    <div style="text-align:center;padding:24px 10px 0;color:var(--gray);font-size:13px">
+      他に受託中の配送はありません。<br>「さがす」から新しい荷物を見つけましょう。
+    </div>`;
+}
+function addTripView(){
+  return `
+    <div class="section-h">旅行ルートを入力</div>
+    <div class="field"><label>出発空港</label><input placeholder="例：成田 (NRT)"></div>
+    <div class="field"><label>到着空港</label><input placeholder="例：ホノルル (HNL)"></div>
+    <div class="field"><label>出発日</label><input type="date"></div>
+    <div class="field"><label>運べる重量の目安（kg）</label><input type="number" placeholder="例：7"></div>
+    <button class="btn" onclick="setTab('home');toast('旅行予定を登録しました（デモ）')">登録する</button>
+  `;
+}
+
+/* ---- MY PAGE ---- */
+function myPage(){
+  const isShipper = role==='shipper';
+  return `
+    <div class="profile-head">
+      <div class="big-avatar">へ</div>
+      <h3>へび さん</h3>
+      <div class="stars">★★★★★ ${isShipper?'4.8':'4.9'}（${isShipper?'12':'27'}件）</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="n">${isShipper?'3':'27'}</div><div class="l">${isShipper?'配送依頼':'運んだ荷物'}</div></div>
+      <div class="stat-box"><div class="n">${isShipper?'¥8.4k':'¥7.3k'}</div><div class="l">今月</div></div>
+      <div class="stat-box"><div class="n">${isShipper?'4.2日':'8回'}</div><div class="l">${isShipper?'平均配送':'渡航'}</div></div>
+    </div>
+    ${[['💳','支払い方法'],['🔔','通知設定'],['🛂','本人確認 ('+(isShipper?'完了':'完了')+')'],['📄','利用規約'],['❓','ヘルプ・サポート']]
+      .map(([ic,lbl])=>`
+      <div class="menu-item" onclick="toast('${lbl}（デモ）')">
+        <span class="mi-ico">${ic}</span>${lbl}<span class="chev">›</span>
+      </div>`).join('')}
+    <button class="btn ghost" style="margin-top:18px" onclick="toast('ログアウト（デモ）')">ログアウト</button>
+  `;
+}
+
+/* ============ SELECTED ============ */
+let selected=null, selectedTrip=null;
+function openDetail(id){ selected = shipments.find(s=>s.id===id); go('detail'); }
+
+/* ============ INIT ============ */
+setRole('shipper');
+</script>
+</body>
+</html>
